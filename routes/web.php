@@ -30,4 +30,10 @@ Route::middleware([
     Route::get('/compra/crear', function () {
         return Inertia::render('App/Shops/Create');
     })->name('shops.create');
+    Route::get('/contribuyentes', function () {
+        return Inertia::render('App/Companies/Index');
+    })->name('companies');
+    Route::get('/contribuyente/crear', function () {
+        return Inertia::render('App/Companies/Create');
+    })->name('companies.create');
 });
