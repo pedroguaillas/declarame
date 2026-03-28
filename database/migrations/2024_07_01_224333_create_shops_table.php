@@ -18,7 +18,7 @@ return new class extends Migration {
             $table->string('autorization', 49);
             $table->timestamp('autorized_at')->nullable();
             $table->string('serie', 17);
-            $table->foreignId('contact_id')->constrained()->on('contacs');
+            $table->foreignId('contact_id')->constrained()->on('contacts');
             $table->decimal('sub_total')->default(0);
             $table->decimal('no_iva')->default(0);
             $table->decimal('base0')->default(0);
