@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Tenant\Company;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -30,15 +31,31 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $isTenant = tenant() !== null;
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user('web') ?? $request->user('tenant'),
+            ],
+            'tenancy' => [
+                'isTenant' => $isTenant,
+                'tenant' => tenant(),
+            ],
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
             ],
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
+            'companies' => $isTenant
+                ? fn () => Company::orderBy('name')->get(['id', 'name', 'ruc'])
+                : [],
+            'currentCompany' => $isTenant
+                ? fn () => Company::find(session('current_company_id'))
+                : null,
         ];
     }
 }
