@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->integer('voucher_type');
+            $table->foreignId('voucher_type_id')->constrained()->on('voucher_types')->cascadeOnDelete();
             $table->date('emision');
             $table->string('autorization', 49);
             $table->timestamp('autorized_at')->nullable();
@@ -22,6 +22,7 @@ return new class extends Migration
             $table->foreignId('contact_id')->constrained()->on('contacts');
             $table->decimal('sub_total')->default(0);
             $table->decimal('no_iva')->default(0);
+            $table->decimal('exempt')->default(0);
             $table->decimal('base0')->default(0);
             $table->decimal('base5')->default(0);
             $table->decimal('base8')->default(0);

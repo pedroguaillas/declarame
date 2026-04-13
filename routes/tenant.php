@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\SsoController;
 use App\Http\Controllers\Tenant\CompanyController;
 use App\Http\Controllers\Tenant\CompanyScopeController;
+use App\Http\Controllers\Tenant\ContactController;
 use App\Http\Controllers\Tenant\OrderController;
 use App\Http\Controllers\Tenant\ShopController;
 use App\Services\AuthService;
@@ -24,9 +25,7 @@ Route::middleware([
 
     Route::middleware(['auth:tenant'])->group(function () {
 
-        Route::get('/dashboard', function () {
-            return Inertia::render('Dashboard');
-        })->name('tenant.dashboard');
+        Route::get('/dashboard', fn () => Inertia::render('Dashboard'))->name('tenant.dashboard');
 
         Route::resource('companies', CompanyController::class)
             ->except(['show'])
@@ -38,6 +37,10 @@ Route::middleware([
                 'update' => 'tenant.companies.update',
                 'destroy' => 'tenant.companies.destroy',
             ]);
+
+        Route::get('companies/resolve/{identification}', [CompanyController::class, 'resolve'])->name('tenant.companies.resolve');
+
+        Route::get('contacts/resolve/{identification}', [ContactController::class, 'resolve'])->name('tenant.contacts.resolve');
 
         Route::resource('shops', ShopController::class)
             ->except(['show'])

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreCompanyRequest;
 use App\Http\Requests\Tenant\UpdateCompanyRequest;
 use App\Models\Tenant\Company;
+use App\Models\Tenant\ContributorType;
+use App\Services\SriResolveNameService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,7 +25,22 @@ class CompanyController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Companies/Create');
+        $contributorType = ContributorType::all();
+
+        return Inertia::render('Companies/Create', [
+            'contributorType' => $contributorType,
+        ]);
+    }
+
+    public function resolve(string $identification, SriResolveNameService $sriService)
+    {
+        $company = Company::where('ruc', $identification)->first();
+
+        if (! $company) {
+            $company = $sriService->searchByIdentificationSRI($identification);
+        }
+
+        return response()->json($company);
     }
 
     public function store(StoreCompanyRequest $request): RedirectResponse

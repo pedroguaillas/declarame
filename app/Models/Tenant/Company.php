@@ -15,7 +15,7 @@ class Company extends Model
         'retention_agent',
         'phantom_taxpayer',
         'no_transactions',
-        'rimpe',
+        'contributor_type_id',
         'phone',
         'email',
         'type_declaration',
@@ -25,9 +25,7 @@ class Company extends Model
     protected function casts(): array
     {
         return [
-            'special_contribution' => 'boolean',
             'accounting' => 'boolean',
-            'retention_agent' => 'boolean',
             'phantom_taxpayer' => 'boolean',
             'no_transactions' => 'boolean',
         ];

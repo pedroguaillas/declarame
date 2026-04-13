@@ -28,7 +28,7 @@ const emit = defineEmits<{
     <Select
         :model-value="props.modelValue !== null && props.modelValue !== undefined ? String(props.modelValue) : undefined"
         :disabled="props.disabled"
-        @update:model-value="emit('update:modelValue', $event)"
+        @update:model-value="(v) => v != null && emit('update:modelValue', v as string | number)"
     >
         <SelectTrigger>
             <SelectValue :placeholder="props.placeholder ?? 'Seleccionar...'" />

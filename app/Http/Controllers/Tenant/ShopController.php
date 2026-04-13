@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreShopRequest;
 use App\Http\Requests\Tenant\UpdateShopRequest;
-use App\Models\Tenant\Contact;
 use App\Models\Tenant\Shop;
+use App\Models\Tenant\VoucherType;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,8 +27,10 @@ class ShopController extends Controller
 
     public function create(): Response
     {
+        $voucherTypes = VoucherType::whereIn('code', ['01', '02', '03', '04', '05'])->get();
+
         return Inertia::render('Shops/Create', [
-            'contacts' => Contact::orderBy('name')->get(['id', 'name']),
+            'voucherTypes' => $voucherTypes,
         ]);
     }
 
@@ -44,9 +46,11 @@ class ShopController extends Controller
 
     public function edit(Shop $shop): Response
     {
+        $voucherTypes = VoucherType::whereIn('code', ['01', '02', '03', '04', '05'])->get();
+
         return Inertia::render('Shops/Edit', [
             'shop' => $shop,
-            'contacts' => Contact::orderBy('name')->get(['id', 'name']),
+            'voucherTypes' => $voucherTypes,
         ]);
     }
 

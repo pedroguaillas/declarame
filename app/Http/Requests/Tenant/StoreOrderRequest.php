@@ -22,7 +22,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'contact_id' => ['required', 'integer', 'exists:contacts,id'],
-            'voucher_type' => ['required', 'integer'],
+            'contributor_type_id' => ['required', 'integer'],
             'emision' => ['required', 'date'],
             'autorization' => ['required', 'string', 'max:49'],
             'autorized_at' => ['nullable', 'date'],

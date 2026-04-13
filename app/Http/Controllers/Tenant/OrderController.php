@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreOrderRequest;
 use App\Http\Requests\Tenant\UpdateOrderRequest;
-use App\Models\Tenant\Contact;
 use App\Models\Tenant\Order;
+use App\Models\Tenant\VoucherType;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,8 +27,10 @@ class OrderController extends Controller
 
     public function create(): Response
     {
+        $voucherTypes = VoucherType::whereIn('code', ['01', '02', '04'])->get();
+
         return Inertia::render('Orders/Create', [
-            'contacts' => Contact::orderBy('name')->get(['id', 'name']),
+            'voucherTypes' => $voucherTypes,
         ]);
     }
 
@@ -44,9 +46,11 @@ class OrderController extends Controller
 
     public function edit(Order $order): Response
     {
+        $voucherTypes = VoucherType::whereIn('code', ['01', '02', '04'])->get();
+
         return Inertia::render('Orders/Edit', [
             'order' => $order,
-            'contacts' => Contact::orderBy('name')->get(['id', 'name']),
+            'voucherTypes' => $voucherTypes,
         ]);
     }
 

@@ -10,7 +10,7 @@ class Order extends Model
     protected $fillable = [
         'company_id',
         'contact_id',
-        'voucher_type',
+        'voucher_type_id',
         'emision',
         'autorization',
         'autorized_at',

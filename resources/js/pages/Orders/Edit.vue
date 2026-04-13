@@ -2,17 +2,13 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ShopForm from '@/pages/Shops/partials/ShopForm.vue';
 import { update } from '@/actions/App/Http/Controllers/Tenant/OrderController';
+import { VoucherType } from '@/types/voucher-type';
 import { Head, useForm } from '@inertiajs/vue3';
-
-interface Option {
-    id: number;
-    name: string;
-}
 
 interface Order {
     id: number;
     contact_id: number;
-    voucher_type: number;
+    voucher_type_id: number;
     emision: string;
     autorization: string;
     autorized_at: string | null;
@@ -42,12 +38,12 @@ interface Order {
 
 const props = defineProps<{
     order: Order;
-    contacts: Option[];
+    voucherTypes: VoucherType[];
 }>();
 
 const form = useForm({
     contact_id: props.order.contact_id,
-    voucher_type: props.order.voucher_type,
+    voucher_type_id: props.order.voucher_type_id,
     emision: props.order.emision,
     autorization: props.order.autorization,
     autorized_at: props.order.autorized_at ?? '',
@@ -75,8 +71,6 @@ const form = useForm({
     retention_at: props.order.retention_at ?? '',
 });
 
-const contacts = props.contacts.map((c) => ({ value: c.id, label: c.name }));
-
 function submit() {
     form.put(update.url(props.order));
 }
@@ -93,7 +87,7 @@ function submit() {
         <div class="overflow-hidden rounded-lg border border-border bg-card">
             <ShopForm
                 :form="form"
-                :contacts="contacts"
+                :voucher-types="props.voucherTypes"
                 submit-label="Actualizar venta"
                 @submit="submit"
             />

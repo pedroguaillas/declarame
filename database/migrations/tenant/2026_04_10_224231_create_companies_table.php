@@ -16,15 +16,15 @@ return new class extends Migration
             $table->string('ruc', 13)->unique();
             $table->string('name', 300);
             $table->string('matrix_address', 300);
-            $table->boolean('special_contribution')->default(false);
+            $table->integer('special_contribution')->nullable();
             $table->boolean('accounting')->default(false);
-            $table->boolean('retention_agent')->default(false);
+            $table->integer('retention_agent')->nullable();
             $table->boolean('phantom_taxpayer')->default(false);
             $table->boolean('no_transactions')->default(false);
-            $table->string('rimpe', 50)->nullable();
+            $table->foreignId('contributor_type_id')->constrained('contributor_types');
             $table->string('phone', 20)->nullable();
             $table->string('email', 50)->nullable();
-            $table->string('type_declaration')->nullable();
+            $table->string('type_declaration')->nullable(); // mensual | semestral
             $table->string('pass_sri', 50)->nullable();
             $table->timestamps();
         });
