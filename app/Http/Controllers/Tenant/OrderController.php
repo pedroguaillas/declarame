@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreOrderRequest;
 use App\Http\Requests\Tenant\UpdateOrderRequest;
 use App\Models\Tenant\Order;
+use App\Models\Tenant\Retention;
 use App\Models\Tenant\VoucherType;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,13 +17,17 @@ class OrderController extends Controller
 {
     public function index(): Response
     {
-        $orders = Order::with(['company:id,name', 'contact:id,name'])
+        $orders = Order::with(['company:id,name', 'contact:id,name', 'retentionItems.retention'])
             ->when(session('current_company_id'), fn ($q) => $q->where('company_id', session('current_company_id')))
             ->orderByDesc('emision')
-            ->get();
+            ->get([
+                'id', 'company_id', 'contact_id', 'serie', 'emision', 'total', 'sub_total',
+                'state', 'serie_retention', 'date_retention', 'state_retention', 'autorization_retention',
+            ]);
 
         return Inertia::render('Orders/Index', [
             'orders' => $orders,
+            'retentions' => Retention::orderBy('code')->get(['id', 'code', 'type', 'description', 'percentage']),
         ]);
     }
 
@@ -68,5 +74,33 @@ class OrderController extends Controller
 
         return redirect()->route('tenant.orders.index')
             ->with('success', 'Venta eliminada correctamente.');
+    }
+
+    public function storeRetention(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'serie_retention' => ['required', 'string', 'max:17'],
+            'date_retention' => ['required', 'date'],
+            'autorization_retention' => ['required', 'string', 'max:49'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.retention_id' => ['required', 'integer', 'exists:retentions,id'],
+            'items.*.base' => ['required', 'numeric', 'min:0'],
+            'items.*.porcentage' => ['required', 'numeric', 'min:0'],
+            'items.*.value' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $order->update([
+            'serie_retention' => $validated['serie_retention'],
+            'date_retention' => $validated['date_retention'],
+            'autorization_retention' => $validated['autorization_retention'],
+            'state_retention' => 'AUTORIZADO',
+        ]);
+
+        $order->retentionItems()->delete();
+
+        $order->retentionItems()->createMany($validated['items']);
+
+        return redirect()->route('tenant.orders.index')
+            ->with('success', 'Retención registrada correctamente.');
     }
 }

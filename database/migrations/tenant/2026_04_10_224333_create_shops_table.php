@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('shops', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('acount_id')->nullable()->constrained()->on('acounts')->cascadeOnDelete();
             $table->foreignId('company_id')->constrained()->on('companies')->cascadeOnDelete();
             $table->foreignId('voucher_type_id')->constrained()->on('voucher_types')->cascadeOnDelete();
             $table->date('emision');

@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('shop_retention_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('shop_id')->constrained()->on('shops')->cascadeOnDelete();
-            $table->smallInteger('code');
-            $table->string('tax_code');
+            $table->foreignId('retention_id')->constrained()->on('retentions')->cascadeOnDelete();
             $table->decimal('base');
             $table->decimal('porcentage');
             $table->decimal('value');

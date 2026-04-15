@@ -4,6 +4,7 @@ namespace App\Models\Tenant;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Shop extends Model
 {
@@ -41,9 +42,9 @@ class Shop extends Model
     protected function casts(): array
     {
         return [
-            'emision' => 'date',
+            'emision' => 'date:d-m-Y',
             'autorized_at' => 'datetime',
-            'date_retention' => 'date',
+            'date_retention' => 'date:d-m-Y',
             'retention_at' => 'datetime',
             'sub_total' => 'decimal:2',
             'no_iva' => 'decimal:2',
@@ -61,6 +62,11 @@ class Shop extends Model
             'ice' => 'decimal:2',
             'total' => 'decimal:2',
         ];
+    }
+
+    public function retentionItems(): HasMany
+    {
+        return $this->hasMany(ShopRetentionItem::class);
     }
 
     public function company(): BelongsTo

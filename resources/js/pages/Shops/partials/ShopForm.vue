@@ -139,6 +139,11 @@ watchEffect(() => {
   props.form.total = parseFloat(computedTotal.value.toFixed(2));
 });
 
+const today = new Date().toISOString().slice(0, 10);
+const nowLocal = new Date(new Date() - new Date().getTimezoneOffset() * 60000)
+  .toISOString()
+  .slice(0, 16);
+
 const emit = defineEmits<{
   submit: [];
 }>();
@@ -246,7 +251,7 @@ const emit = defineEmits<{
           <Label
             >Fecha de emisión <span class="text-destructive">*</span></Label
           >
-          <Input v-model="form.emision" type="date" />
+          <Input v-model="form.emision" type="date" min="2015-01-01" :max="today" />
           <p v-if="form.errors.emision" class="text-destructive text-xs">
             {{ form.errors.emision }}
           </p>
@@ -267,7 +272,7 @@ const emit = defineEmits<{
 
         <div class="flex flex-col gap-1.5">
           <Label>Fecha de autorización</Label>
-          <Input v-model="form.autorized_at" type="datetime-local" />
+          <Input v-model="form.autorized_at" type="datetime-local" min="2015-01-01T00:00" :max="nowLocal" />
           <p v-if="form.errors.autorized_at" class="text-destructive text-xs">
             {{ form.errors.autorized_at }}
           </p>

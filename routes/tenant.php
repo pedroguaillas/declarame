@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\SsoController;
+use App\Http\Controllers\Tenant\AccountController;
 use App\Http\Controllers\Tenant\CompanyController;
 use App\Http\Controllers\Tenant\CompanyScopeController;
 use App\Http\Controllers\Tenant\ContactController;
 use App\Http\Controllers\Tenant\OrderController;
+use App\Http\Controllers\Tenant\RetentionController;
 use App\Http\Controllers\Tenant\ShopController;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
@@ -53,6 +55,9 @@ Route::middleware([
                 'destroy' => 'tenant.shops.destroy',
             ]);
 
+        Route::post('shops/{shop}/retention', [ShopController::class, 'storeRetention'])
+            ->name('tenant.shops.retention.store');
+
         Route::resource('orders', OrderController::class)
             ->except(['show'])
             ->names([
@@ -63,6 +68,15 @@ Route::middleware([
                 'update' => 'tenant.orders.update',
                 'destroy' => 'tenant.orders.destroy',
             ]);
+
+        Route::post('orders/{order}/retention', [OrderController::class, 'storeRetention'])
+            ->name('tenant.orders.retention.store');
+
+        Route::get('accounts', [AccountController::class, 'index'])->name('tenant.accounts.index');
+        Route::post('accounts/import', [AccountController::class, 'import'])->name('tenant.accounts.import');
+
+        Route::get('retentions', [RetentionController::class, 'index'])->name('tenant.retentions.index');
+        Route::post('retentions/import', [RetentionController::class, 'import'])->name('tenant.retentions.import');
 
         Route::post('/company-scope', [CompanyScopeController::class, 'store'])
             ->name('tenant.company-scope.store');
