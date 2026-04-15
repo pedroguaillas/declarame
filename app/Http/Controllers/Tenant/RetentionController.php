@@ -13,7 +13,7 @@ class RetentionController extends Controller
 {
     public function index(): Response
     {
-        $retentions = Retention::orderBy('code')->get();
+        $retentions = Retention::orderBy('code')->paginate(50);
 
         return Inertia::render('Retentions/Index', [
             'retentions' => $retentions,

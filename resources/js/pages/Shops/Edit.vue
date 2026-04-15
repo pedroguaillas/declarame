@@ -5,8 +5,15 @@ import { update } from '@/actions/App/Http/Controllers/Tenant/ShopController';
 import { VoucherType } from '@/types/voucher-type';
 import { Head, useForm } from '@inertiajs/vue3';
 
+interface Account {
+    id: number;
+    code: string;
+    name: string;
+}
+
 interface Shop {
     id: number;
+    acount_id: number | null;
     contact_id: number;
     voucher_type_id: number;
     emision: string;
@@ -39,9 +46,11 @@ interface Shop {
 const props = defineProps<{
     shop: Shop;
     voucherTypes: VoucherType[];
+    accounts: Account[];
 }>();
 
 const form = useForm({
+    acount_id: props.shop.acount_id,
     contact_id: props.shop.contact_id,
     voucher_type_id: props.shop.voucher_type_id,
     emision: props.shop.emision,
@@ -88,6 +97,7 @@ function submit() {
             <ShopForm
                 :form="form"
                 :voucher-types="props.voucherTypes"
+                :accounts="props.accounts"
                 submit-label="Actualizar compra"
                 @submit="submit"
             />

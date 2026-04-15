@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Shop extends Model
 {
     protected $fillable = [
+        'acount_id',
         'company_id',
         'contact_id',
         'voucher_type_id',
@@ -77,5 +78,10 @@ class Shop extends Model
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'acount_id');
     }
 }

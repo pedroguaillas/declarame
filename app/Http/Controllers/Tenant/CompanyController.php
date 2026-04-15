@@ -16,7 +16,7 @@ class CompanyController extends Controller
 {
     public function index(): Response
     {
-        $companies = Company::orderBy('name')->get();
+        $companies = Company::orderBy('name')->paginate(20);
 
         return Inertia::render('Companies/Index', [
             'companies' => $companies,
@@ -55,6 +55,7 @@ class CompanyController extends Controller
     {
         return Inertia::render('Companies/Edit', [
             'company' => $company,
+            'contributorType' => ContributorType::all(),
         ]);
     }
 

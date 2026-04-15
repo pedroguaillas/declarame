@@ -8,6 +8,12 @@ import { VoucherType } from '@/types/voucher-type';
 import { Link } from '@inertiajs/vue3';
 import { computed, ref, watch, watchEffect } from 'vue';
 
+interface Account {
+  id: number;
+  code: string;
+  name: string;
+}
+
 interface Option {
   value: number;
   label: string;
@@ -18,7 +24,9 @@ interface FormErrors {
 }
 
 const props = defineProps<{
+  accounts: Account[];
   form: {
+    acount_id: number | null;
     contact_id: number | null;
     voucher_type_id: number | string;
     emision: string;
@@ -90,6 +98,43 @@ watch(contactIdentification, async (identification) => {
     contactResolving.value = false;
   }
 });
+
+// ── Account search ────────────────────────────────────────────────────────────
+
+const accountQuery = ref('');
+const accountDropdownOpen = ref(false);
+
+watch(
+  () => props.form.acount_id,
+  (id) => {
+    if (id && !accountQuery.value) {
+      const found = props.accounts.find((a) => a.id === id);
+      if (found) accountQuery.value = `${found.code} – ${found.name}`;
+    }
+  },
+  { immediate: true },
+);
+
+function filteredAccounts(): Account[] {
+  const q = accountQuery.value.trim().toLowerCase();
+  if (!q) return props.accounts.slice(0, 8);
+  return props.accounts
+    .filter((a) => a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))
+    .slice(0, 8);
+}
+
+function selectAccount(account: Account) {
+  props.form.acount_id = account.id;
+  accountQuery.value = `${account.code} – ${account.name}`;
+  accountDropdownOpen.value = false;
+}
+
+function clearAccount() {
+  props.form.acount_id = null;
+  accountQuery.value = '';
+}
+
+// ── Numeric helpers ───────────────────────────────────────────────────────────
 
 const n = (v: number | string) => parseFloat(String(v)) || 0;
 
@@ -213,6 +258,49 @@ const emit = defineEmits<{
             placeholder="Se completa automáticamente"
             class="bg-muted text-muted-foreground cursor-default"
           />
+        </div>
+
+        <!-- Account search -->
+        <div class="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-3">
+          <Label>Cuenta contable (costo / gasto)</Label>
+          <div class="relative">
+            <Input
+              v-model="accountQuery"
+              type="text"
+              placeholder="Buscar por código o nombre…"
+              class="pr-8"
+              @focus="accountDropdownOpen = true"
+              @blur="() => window.setTimeout(() => { accountDropdownOpen = false }, 150)"
+            />
+            <button
+              v-if="props.form.acount_id"
+              type="button"
+              class="text-muted-foreground hover:text-foreground absolute top-1/2 right-2.5 -translate-y-1/2"
+              @mousedown.prevent="clearAccount"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div
+              v-if="accountDropdownOpen && filteredAccounts().length > 0"
+              class="border-border bg-popover absolute left-0 right-0 top-full z-10 mt-1 max-h-52 overflow-y-auto rounded-md border shadow-lg"
+            >
+              <button
+                v-for="account in filteredAccounts()"
+                :key="account.id"
+                type="button"
+                class="hover:bg-accent flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors"
+                @mousedown.prevent="selectAccount(account)"
+              >
+                <span class="text-foreground w-28 shrink-0 font-mono text-xs font-medium">{{ account.code }}</span>
+                <span class="text-muted-foreground flex-1 truncate text-xs">{{ account.name }}</span>
+              </button>
+            </div>
+          </div>
+          <p v-if="form.errors.acount_id" class="text-destructive text-xs">
+            {{ form.errors.acount_id }}
+          </p>
         </div>
 
         <div class="flex flex-col gap-1.5">

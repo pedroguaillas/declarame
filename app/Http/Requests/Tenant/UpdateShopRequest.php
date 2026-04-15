@@ -21,8 +21,9 @@ class UpdateShopRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'acount_id' => ['nullable', 'integer', 'exists:acounts,id'],
             'contact_id' => ['required', 'integer', 'exists:contacts,id'],
-            'voucher_type' => ['required', 'integer'],
+            'voucher_type_id' => ['required', 'integer'],
             'emision' => ['required', 'date'],
             'autorization' => ['required', 'string', 'max:49'],
             'autorized_at' => ['nullable', 'date'],

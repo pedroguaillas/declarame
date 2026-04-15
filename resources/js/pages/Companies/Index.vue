@@ -5,6 +5,7 @@ import {
   destroy,
   edit,
 } from '@/actions/App/Http/Controllers/Tenant/CompanyController';
+import Pagination from '@/components/Pagination.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 
 interface Company {
@@ -18,8 +19,18 @@ interface Company {
   retention_agent: boolean;
 }
 
+interface Paginator<T> {
+  data: T[];
+  from: number | null;
+  to: number | null;
+  total: number;
+  prev_page_url: string | null;
+  next_page_url: string | null;
+  links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+
 defineProps<{
-  companies: Company[];
+  companies: Paginator<Company>;
 }>();
 
 function deleteCompany(company: Company) {
@@ -44,7 +55,7 @@ function deleteCompany(company: Company) {
     </div>
 
     <div class="border-border bg-card overflow-hidden rounded-lg border">
-      <div v-if="companies.length === 0" class="text-muted-foreground p-6">
+      <div v-if="companies.data.length === 0" class="text-muted-foreground p-6">
         No hay empresas registradas.
       </div>
 
@@ -87,7 +98,7 @@ function deleteCompany(company: Company) {
           </tr>
         </thead>
         <tbody class="divide-border bg-card divide-y">
-          <tr v-for="company in companies" :key="company.id">
+          <tr v-for="company in companies.data" :key="company.id">
             <td
               class="text-foreground px-6 py-4 font-mono text-sm whitespace-nowrap"
             >
@@ -148,6 +159,9 @@ function deleteCompany(company: Company) {
           </tr>
         </tbody>
       </table>
+      <div v-if="companies.data.length > 0" class="border-border border-t">
+        <Pagination v-bind="companies" />
+      </div>
     </div>
   </AdminLayout>
 </template>

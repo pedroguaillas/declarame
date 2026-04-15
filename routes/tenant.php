@@ -7,13 +7,13 @@ use App\Http\Controllers\Tenant\AccountController;
 use App\Http\Controllers\Tenant\CompanyController;
 use App\Http\Controllers\Tenant\CompanyScopeController;
 use App\Http\Controllers\Tenant\ContactController;
+use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Controllers\Tenant\OrderController;
 use App\Http\Controllers\Tenant\RetentionController;
 use App\Http\Controllers\Tenant\ShopController;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 
@@ -27,7 +27,7 @@ Route::middleware([
 
     Route::middleware(['auth:tenant'])->group(function () {
 
-        Route::get('/dashboard', fn () => Inertia::render('Dashboard'))->name('tenant.dashboard');
+        Route::get('/dashboard', DashboardController::class)->name('tenant.dashboard');
 
         Route::resource('companies', CompanyController::class)
             ->except(['show'])
@@ -44,6 +44,8 @@ Route::middleware([
 
         Route::get('contacts/resolve/{identification}', [ContactController::class, 'resolve'])->name('tenant.contacts.resolve');
 
+        Route::post('shops/import', [ShopController::class, 'import'])->name('tenant.shops.import');
+
         Route::resource('shops', ShopController::class)
             ->except(['show'])
             ->names([
@@ -57,6 +59,11 @@ Route::middleware([
 
         Route::post('shops/{shop}/retention', [ShopController::class, 'storeRetention'])
             ->name('tenant.shops.retention.store');
+
+        Route::patch('shops/{shop}/account', [ShopController::class, 'updateAccount'])
+            ->name('tenant.shops.account.update');
+
+        Route::post('orders/import', [OrderController::class, 'import'])->name('tenant.orders.import');
 
         Route::resource('orders', OrderController::class)
             ->except(['show'])

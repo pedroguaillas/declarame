@@ -6,20 +6,27 @@ import {
 } from '@/actions/App/Http/Controllers/Tenant/CompanyController';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import SelectField from '@/components/ui/select/SelectField.vue';
 import { Switch } from '@/components/ui/switch';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+interface ContributorType {
+  id: number;
+  description: string;
+}
 
 interface Company {
   id: number;
   ruc: string;
   name: string;
   matrix_address: string;
-  special_contribution: boolean;
+  contributor_type_id: number | null;
+  special_contribution: number | null;
   accounting: boolean;
-  retention_agent: boolean;
+  retention_agent: number | null;
   phantom_taxpayer: boolean;
   no_transactions: boolean;
-  rimpe: string | null;
   phone: string | null;
   email: string | null;
   type_declaration: string | null;
@@ -28,18 +35,28 @@ interface Company {
 
 const props = defineProps<{
   company: Company;
+  contributorType: ContributorType[];
 }>();
+
+const contributorTypeOptions = computed(() =>
+  props.contributorType.map((c) => ({ value: c.id, label: c.description })),
+);
+
+const typeDeclarationOptions = [
+  { value: 'mensual', label: 'Mensual' },
+  { value: 'semestral', label: 'Semestral' },
+];
 
 const form = useForm({
   ruc: props.company.ruc,
   name: props.company.name,
   matrix_address: props.company.matrix_address,
+  contributor_type_id: props.company.contributor_type_id,
   special_contribution: props.company.special_contribution,
   accounting: props.company.accounting,
   retention_agent: props.company.retention_agent,
   phantom_taxpayer: props.company.phantom_taxpayer,
   no_transactions: props.company.no_transactions,
-  rimpe: props.company.rimpe ?? '',
   phone: props.company.phone ?? '',
   email: props.company.email ?? '',
   type_declaration: props.company.type_declaration ?? '',
@@ -70,75 +87,170 @@ function submit() {
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div class="grid gap-1.5">
             <Label for="ruc">RUC <span class="text-destructive">*</span></Label>
-            <Input id="ruc" v-model="form.ruc" type="text" maxlength="13" class="font-mono" />
-            <p v-if="form.errors.ruc" class="text-destructive text-sm">{{ form.errors.ruc }}</p>
+            <Input
+              id="ruc"
+              v-model="form.ruc"
+              type="text"
+              maxlength="13"
+              class="font-mono"
+            />
+            <p v-if="form.errors.ruc" class="text-destructive text-sm">
+              {{ form.errors.ruc }}
+            </p>
           </div>
 
           <div class="grid gap-1.5">
             <Label for="name">Nombre <span class="text-destructive">*</span></Label>
             <Input id="name" v-model="form.name" type="text" maxlength="300" />
-            <p v-if="form.errors.name" class="text-destructive text-sm">{{ form.errors.name }}</p>
+            <p v-if="form.errors.name" class="text-destructive text-sm">
+              {{ form.errors.name }}
+            </p>
           </div>
 
           <div class="grid gap-1.5 sm:col-span-2">
             <Label for="matrix_address">Dirección Matriz <span class="text-destructive">*</span></Label>
-            <Input id="matrix_address" v-model="form.matrix_address" type="text" maxlength="300" />
-            <p v-if="form.errors.matrix_address" class="text-destructive text-sm">{{ form.errors.matrix_address }}</p>
+            <Input
+              id="matrix_address"
+              v-model="form.matrix_address"
+              type="text"
+              maxlength="300"
+            />
+            <p v-if="form.errors.matrix_address" class="text-destructive text-sm">
+              {{ form.errors.matrix_address }}
+            </p>
           </div>
 
           <div class="grid gap-1.5">
             <Label for="phone">Teléfono</Label>
             <Input id="phone" v-model="form.phone" type="text" maxlength="20" />
-            <p v-if="form.errors.phone" class="text-destructive text-sm">{{ form.errors.phone }}</p>
+            <p v-if="form.errors.phone" class="text-destructive text-sm">
+              {{ form.errors.phone }}
+            </p>
           </div>
 
           <div class="grid gap-1.5">
             <Label for="email">Email</Label>
-            <Input id="email" v-model="form.email" type="email" maxlength="50" />
-            <p v-if="form.errors.email" class="text-destructive text-sm">{{ form.errors.email }}</p>
+            <Input
+              id="email"
+              v-model="form.email"
+              type="email"
+              maxlength="50"
+            />
+            <p v-if="form.errors.email" class="text-destructive text-sm">
+              {{ form.errors.email }}
+            </p>
           </div>
 
           <div class="grid gap-1.5">
-            <Label for="rimpe">RIMPE</Label>
-            <Input id="rimpe" v-model="form.rimpe" type="text" maxlength="50" />
-            <p v-if="form.errors.rimpe" class="text-destructive text-sm">{{ form.errors.rimpe }}</p>
+            <Label>Tipo de Contribuyente</Label>
+            <SelectField
+              :model-value="form.contributor_type_id"
+              :options="contributorTypeOptions"
+              placeholder="Seleccionar tipo"
+              @update:model-value="
+                (v) => (form.contributor_type_id = Number(v))
+              "
+            />
+            <p
+              v-if="form.errors.contributor_type_id"
+              class="text-destructive text-sm"
+            >
+              {{ form.errors.contributor_type_id }}
+            </p>
           </div>
 
           <div class="grid gap-1.5">
-            <Label for="type_declaration">Tipo de Declaración</Label>
-            <Input id="type_declaration" v-model="form.type_declaration" type="text" />
-            <p v-if="form.errors.type_declaration" class="text-destructive text-sm">{{ form.errors.type_declaration }}</p>
+            <Label>Tipo de Declaración</Label>
+            <SelectField
+              :model-value="form.type_declaration"
+              :options="typeDeclarationOptions"
+              placeholder="Seleccionar período"
+              @update:model-value="(v) => (form.type_declaration = String(v))"
+            />
+            <p
+              v-if="form.errors.type_declaration"
+              class="text-destructive text-sm"
+            >
+              {{ form.errors.type_declaration }}
+            </p>
+          </div>
+
+          <div class="grid gap-1.5">
+            <Label for="special_contribution">Contribuyente Especial N°</Label>
+            <Input
+              id="special_contribution"
+              :model-value="form.special_contribution ?? undefined"
+              type="number"
+              min="0"
+              placeholder="Número de resolución (opcional)"
+              @update:model-value="
+                (v) => (form.special_contribution = v !== '' ? Number(v) : null)
+              "
+            />
+            <p
+              v-if="form.errors.special_contribution"
+              class="text-destructive text-sm"
+            >
+              {{ form.errors.special_contribution }}
+            </p>
+          </div>
+
+          <div class="grid gap-1.5">
+            <Label for="retention_agent">Agente de Retención N°</Label>
+            <Input
+              id="retention_agent"
+              :model-value="form.retention_agent ?? undefined"
+              type="number"
+              min="0"
+              placeholder="Número de resolución (opcional)"
+              @update:model-value="
+                (v) => (form.retention_agent = v !== '' ? Number(v) : null)
+              "
+            />
+            <p
+              v-if="form.errors.retention_agent"
+              class="text-destructive text-sm"
+            >
+              {{ form.errors.retention_agent }}
+            </p>
           </div>
 
           <div class="grid gap-1.5">
             <Label for="pass_sri">Clave SRI</Label>
-            <Input id="pass_sri" v-model="form.pass_sri" type="password" maxlength="50" />
-            <p v-if="form.errors.pass_sri" class="text-destructive text-sm">{{ form.errors.pass_sri }}</p>
+            <Input
+              id="pass_sri"
+              v-model="form.pass_sri"
+              type="password"
+              maxlength="50"
+            />
+            <p v-if="form.errors.pass_sri" class="text-destructive text-sm">
+              {{ form.errors.pass_sri }}
+            </p>
           </div>
         </div>
 
         <div class="border-border mt-6 border-t pt-6">
           <h2 class="text-foreground text-sm font-medium">Características</h2>
-          <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors">
-              <span class="text-foreground text-sm">Contribuyente especial</span>
-              <Switch v-model:checked="form.special_contribution" />
-            </label>
-            <label class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors">
+          <div
+            class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            <label
+              class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors"
+            >
               <span class="text-foreground text-sm">Lleva contabilidad</span>
-              <Switch v-model:checked="form.accounting" />
+              <Switch v-model="form.accounting" />
             </label>
-            <label class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors">
-              <span class="text-foreground text-sm">Agente de retención</span>
-              <Switch v-model:checked="form.retention_agent" />
-            </label>
-            <label class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors">
+            <label
+              class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors"
+            >
               <span class="text-foreground text-sm">Contribuyente fantasma</span>
-              <Switch v-model:checked="form.phantom_taxpayer" />
+              <Switch v-model="form.phantom_taxpayer" />
             </label>
-            <label class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors">
+            <label
+              class="border-border hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3 transition-colors"
+            >
               <span class="text-foreground text-sm">Sin transacciones</span>
-              <Switch v-model:checked="form.no_transactions" />
+              <Switch v-model="form.no_transactions" />
             </label>
           </div>
         </div>

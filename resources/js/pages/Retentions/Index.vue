@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { importMethod } from '@/actions/App/Http/Controllers/Tenant/RetentionController';
+import Pagination from '@/components/Pagination.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -12,8 +13,18 @@ interface Retention {
   percentage: number;
 }
 
+interface Paginator<T> {
+  data: T[];
+  from: number | null;
+  to: number | null;
+  total: number;
+  prev_page_url: string | null;
+  next_page_url: string | null;
+  links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+
 defineProps<{
-  retentions: Retention[];
+  retentions: Paginator<Retention>;
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -48,7 +59,7 @@ function handleFileChange(event: Event) {
         <span v-if="form.processing" class="text-muted-foreground text-sm">Importando…</span>
 
         <button
-          v-if="retentions.length > 0"
+          v-if="retentions.total > 0"
           type="button"
           class="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60"
           :disabled="form.processing"
@@ -72,7 +83,7 @@ function handleFileChange(event: Event) {
 
     <!-- Empty state -->
     <div
-      v-if="retentions.length === 0"
+      v-if="retentions.total === 0"
       class="border-border bg-card flex flex-col items-center justify-center rounded-lg border py-16"
     >
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-muted-foreground mb-4 size-12">
@@ -106,7 +117,7 @@ function handleFileChange(event: Event) {
         </thead>
         <tbody class="divide-border bg-card divide-y">
           <tr
-            v-for="retention in retentions"
+            v-for="retention in retentions.data"
             :key="retention.id"
             class="hover:bg-muted/40 transition-colors"
           >
@@ -132,6 +143,9 @@ function handleFileChange(event: Event) {
           </tr>
         </tbody>
       </table>
+      <div class="border-border border-t">
+        <Pagination v-bind="retentions" />
+      </div>
     </div>
   </AdminLayout>
 </template>

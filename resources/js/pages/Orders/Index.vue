@@ -4,11 +4,13 @@ import {
   create,
   destroy,
   edit,
+  importMethod,
   storeRetention,
 } from '@/actions/App/Http/Controllers/Tenant/OrderController';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '@/components/Pagination.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 interface RetentionOption {
   id: number;
@@ -43,10 +45,42 @@ interface Order {
   retention_items: RetentionItem[];
 }
 
+interface Paginator<T> {
+  data: T[];
+  from: number | null;
+  to: number | null;
+  total: number;
+  prev_page_url: string | null;
+  next_page_url: string | null;
+  links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+
 const props = defineProps<{
-  orders: Order[];
+  orders: Paginator<Order>;
   retentions: RetentionOption[];
 }>();
+
+// ── Import ────────────────────────────────────────────────────────────────────
+
+const importFileInput = ref<HTMLInputElement | null>(null);
+const importForm = useForm<{ file: File | null }>({ file: null });
+
+function triggerImport() {
+  importFileInput.value?.click();
+}
+
+function handleFileSelected(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  importForm.file = file;
+  importForm.post(importMethod.url(), {
+    forceFormData: true,
+    onFinish: () => {
+      importForm.reset();
+      if (importFileInput.value) importFileInput.value.value = '';
+    },
+  });
+}
 
 const stateVariant = (state: string) => {
   const map: Record<string, 'success' | 'warning' | 'outline' | 'destructive'> = {
@@ -73,6 +107,47 @@ function deleteOrder(order: Order) {
     router.delete(destroy.url(order));
   }
 }
+
+// ── Row selection ────────────────────────────────────────────────────────────
+
+const selectedIds = ref<Set<number>>(new Set());
+
+const selectedCount = computed(() => selectedIds.value.size);
+const selectedOrders = computed(() => props.orders.data.filter((o) => selectedIds.value.has(o.id)));
+const singleSelected = computed(() => (selectedOrders.value.length === 1 ? selectedOrders.value[0] : null));
+const isAllSelected = computed(
+  () => props.orders.data.length > 0 && props.orders.data.every((o) => selectedIds.value.has(o.id)),
+);
+const isIndeterminate = computed(() => selectedCount.value > 0 && !isAllSelected.value);
+
+function toggleSelect(id: number) {
+  const next = new Set(selectedIds.value);
+  if (next.has(id)) { next.delete(id); } else { next.add(id); }
+  selectedIds.value = next;
+}
+
+function toggleSelectAll() {
+  selectedIds.value = isAllSelected.value
+    ? new Set()
+    : new Set(props.orders.data.map((o) => o.id));
+}
+
+function clearSelection() {
+  selectedIds.value = new Set();
+}
+
+function deleteSelected() {
+  const count = selectedIds.value.size;
+  if (!confirm(`¿Eliminar ${count} venta${count > 1 ? 's' : ''}?`)) return;
+  const toDelete = [...selectedIds.value];
+  clearSelection();
+  toDelete.forEach((id) => {
+    const order = props.orders.data.find((o) => o.id === id);
+    if (order) router.delete(destroy.url(order), { preserveScroll: true });
+  });
+}
+
+watch(() => props.orders.prev_page_url, clearSelection);
 
 // ── Retention panel ──────────────────────────────────────────────────────────
 
@@ -168,22 +243,52 @@ function submitRetention() {
   <AdminLayout>
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-foreground text-2xl font-semibold">Ventas</h1>
-      <Link
-        :href="create.url()"
-        class="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium transition-colors"
-      >
-        Nueva venta
-      </Link>
+      <div class="flex items-center gap-2">
+        <input
+          ref="importFileInput"
+          type="file"
+          accept=".txt"
+          class="hidden"
+          @change="handleFileSelected"
+        />
+        <button
+          type="button"
+          :disabled="importForm.processing"
+          class="border-border text-foreground hover:bg-accent flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+          @click="triggerImport"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          {{ importForm.processing ? 'Importando…' : 'Importar reporte SRI' }}
+        </button>
+        <Link
+          :href="create.url()"
+          class="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium transition-colors"
+        >
+          Nueva venta
+        </Link>
+      </div>
     </div>
 
     <div class="border-border bg-card overflow-hidden rounded-lg border">
-      <div v-if="orders.length === 0" class="text-muted-foreground p-6">
+      <div v-if="orders.data.length === 0" class="text-muted-foreground p-6">
         No hay ventas registradas.
       </div>
 
       <table v-else class="divide-border min-w-full divide-y">
         <thead class="bg-muted">
-          <tr>
+          <!-- Normal header -->
+          <tr v-if="selectedCount === 0">
+            <th class="w-10 px-4 py-3">
+              <input
+                type="checkbox"
+                class="border-border text-primary focus:ring-primary/30 h-4 w-4 cursor-pointer rounded"
+                :checked="isAllSelected"
+                :indeterminate="isIndeterminate"
+                @change="toggleSelectAll"
+              />
+            </th>
             <th class="text-muted-foreground px-5 py-3 text-left text-xs font-medium tracking-wider uppercase">Emisión</th>
             <th class="text-muted-foreground px-5 py-3 text-left text-xs font-medium tracking-wider uppercase">Serie</th>
             <th class="text-muted-foreground px-5 py-3 text-left text-xs font-medium tracking-wider uppercase">Cliente</th>
@@ -192,9 +297,79 @@ function submitRetention() {
             <th class="text-muted-foreground px-5 py-3 text-right text-xs font-medium tracking-wider uppercase">Cobrar</th>
             <th class="relative px-5 py-3"><span class="sr-only">Acciones</span></th>
           </tr>
+
+          <!-- Selection toolbar -->
+          <tr v-else>
+            <th colspan="8" class="px-4 py-2.5">
+              <div class="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  class="border-border text-primary focus:ring-primary/30 h-4 w-4 cursor-pointer rounded"
+                  :checked="isAllSelected"
+                  :indeterminate="isIndeterminate"
+                  @change="toggleSelectAll"
+                />
+                <span class="text-foreground text-sm font-medium">{{ selectedCount }} seleccionada{{ selectedCount > 1 ? 's' : '' }}</span>
+                <div class="bg-border h-4 w-px" />
+
+                <!-- Single-selection actions -->
+                <template v-if="singleSelected">
+                  <button
+                    type="button"
+                    class="flex items-center gap-1.5 text-sm font-medium transition-colors"
+                    :class="singleSelected!.serie_retention ? 'text-green-600 hover:text-green-700 dark:text-green-400' : 'text-muted-foreground hover:text-foreground'"
+                    @click="openRetentionPanel(singleSelected!)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    </svg>
+                    Retención
+                  </button>
+                  <Link
+                    :href="edit.url(singleSelected!)"
+                    class="text-primary hover:text-primary/70 flex items-center gap-1.5 text-sm font-medium transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                    </svg>
+                    Editar
+                  </Link>
+                  <div class="bg-border h-4 w-px" />
+                </template>
+
+                <button
+                  type="button"
+                  class="text-destructive hover:text-destructive/70 flex items-center gap-1.5 text-sm font-medium transition-colors"
+                  @click="deleteSelected"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  </svg>
+                  Eliminar
+                </button>
+
+                <button type="button" class="text-muted-foreground hover:text-foreground ml-auto text-xs transition-colors" @click="clearSelection">
+                  Cancelar
+                </button>
+              </div>
+            </th>
+          </tr>
         </thead>
         <tbody class="divide-border bg-card divide-y">
-          <tr v-for="order in orders" :key="order.id" class="group hover:bg-muted/40 transition-colors">
+          <tr
+            v-for="order in orders.data"
+            :key="order.id"
+            class="group transition-colors"
+            :class="selectedIds.has(order.id) ? 'bg-primary/5' : 'hover:bg-muted/40'"
+          >
+            <td class="w-10 px-4 py-3.5">
+              <input
+                type="checkbox"
+                class="border-border text-primary focus:ring-primary/30 h-4 w-4 cursor-pointer rounded"
+                :checked="selectedIds.has(order.id)"
+                @change="toggleSelect(order.id)"
+              />
+            </td>
             <td class="text-muted-foreground px-5 py-3.5 text-sm whitespace-nowrap tabular-nums">{{ order.emision }}</td>
             <td class="text-foreground px-5 py-3.5 font-mono text-sm whitespace-nowrap">{{ order.serie }}</td>
             <td class="text-muted-foreground max-w-[180px] truncate px-5 py-3.5 text-sm">{{ order.contact.name }}</td>
@@ -207,30 +382,51 @@ function submitRetention() {
             <td class="text-foreground px-5 py-3.5 text-right font-mono text-sm font-medium whitespace-nowrap">
               ${{ (Number(order.total) - (order.retention_items?.reduce((s, i) => s + Number(i.value), 0) ?? 0)).toFixed(2) }}
             </td>
-            <td class="px-5 py-3.5 text-right text-sm whitespace-nowrap">
-              <div class="flex items-center justify-end gap-3 opacity-0 transition-opacity group-hover:opacity-100">
+            <td class="px-4 py-3.5 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <!-- Retention -->
                 <button
                   type="button"
-                  class="flex items-center gap-1 text-sm font-medium transition-colors"
+                  class="rounded-md p-1.5 transition-colors"
                   :class="order.serie_retention
-                    ? 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300'
-                    : 'text-muted-foreground hover:text-foreground'"
-                  :title="order.serie_retention ? 'Ver retención' : 'Registrar retención'"
+                    ? 'text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+                  :title="order.serie_retention ? `Retención: ${order.serie_retention}` : 'Registrar retención'"
                   @click="openRetentionPanel(order)"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                   </svg>
-                  Retención
                 </button>
-                <div class="bg-border h-3.5 w-px" />
-                <Link :href="edit.url(order)" class="text-primary hover:text-primary/70 font-medium">Editar</Link>
-                <button type="button" class="text-destructive hover:text-destructive/70 font-medium" @click="deleteOrder(order)">Eliminar</button>
+                <!-- Edit -->
+                <Link
+                  :href="edit.url(order)"
+                  class="text-muted-foreground hover:bg-muted hover:text-foreground rounded-md p-1.5 transition-colors"
+                  title="Editar"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                  </svg>
+                </Link>
+                <!-- Delete -->
+                <button
+                  type="button"
+                  class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-md p-1.5 transition-colors"
+                  title="Eliminar"
+                  @click="deleteOrder(order)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  </svg>
+                </button>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
+      <div v-if="orders.data.length > 0" class="border-border border-t">
+        <Pagination v-bind="orders" />
+      </div>
     </div>
 
     <!-- Retention slide-over panel -->
@@ -377,7 +573,7 @@ function submitRetention() {
                         placeholder="Buscar por código o concepto…"
                         class="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring/30 h-9 w-full rounded-md border px-3 text-sm focus:ring-2 focus:outline-none"
                         @focus="itemSearches[idx].open = true"
-                        @blur="() => setTimeout(() => { if (itemSearches[idx]) itemSearches[idx].open = false }, 150)"
+                        @blur="() => window.setTimeout(() => { if (itemSearches[idx]) itemSearches[idx].open = false }, 150)"
                       />
                       <!-- Dropdown -->
                       <div

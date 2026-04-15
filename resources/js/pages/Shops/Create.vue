@@ -5,11 +5,19 @@ import { VoucherType } from '@/types/voucher-type';
 import { Head, useForm } from '@inertiajs/vue3';
 import ShopForm from './partials/ShopForm.vue';
 
+interface Account {
+  id: number;
+  code: string;
+  name: string;
+}
+
 const props = defineProps<{
   voucherTypes: VoucherType[];
+  accounts: Account[];
 }>();
 
 const form = useForm({
+  acount_id: null as number | null,
   contact_id: null as number | null,
   voucher_type_id: '' as number | string,
   emision: '',
@@ -55,7 +63,8 @@ function submit() {
     <div class="border-border bg-card overflow-hidden rounded-lg border">
       <ShopForm
         :form="form"
-        :voucherTypes="props.voucherTypes"
+        :voucher-types="props.voucherTypes"
+        :accounts="props.accounts"
         submit-label="Registrar compra"
         @submit="submit"
       />
