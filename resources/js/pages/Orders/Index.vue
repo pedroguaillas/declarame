@@ -5,6 +5,7 @@ import {
   destroy,
   edit,
   importMethod,
+  importRetentions as importRetentionsAction,
   storeRetention,
 } from '@/actions/App/Http/Controllers/Tenant/OrderController';
 import { Badge } from '@/components/ui/badge';
@@ -33,8 +34,19 @@ interface Order {
   id: number;
   serie: string;
   emision: string;
-  total: string;
+  autorization: string;
   sub_total: string;
+  no_iva: string;
+  base0: string;
+  base5: string;
+  base12: string;
+  base15: string;
+  iva5: string;
+  iva12: string;
+  iva15: string;
+  discount: string;
+  ice: string;
+  total: string;
   state: string;
   company: { id: number; name: string };
   contact: { id: number; name: string };
@@ -82,6 +94,28 @@ function handleFileSelected(event: Event) {
   });
 }
 
+// ── Import retentions ─────────────────────────────────────────────────────────
+
+const importRetentionsFileInput = ref<HTMLInputElement | null>(null);
+const importRetentionsForm = useForm<{ file: File | null }>({ file: null });
+
+function triggerImportRetentions() {
+  importRetentionsFileInput.value?.click();
+}
+
+function handleRetentionsFileSelected(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  importRetentionsForm.file = file;
+  importRetentionsForm.post(importRetentionsAction.url(), {
+    forceFormData: true,
+    onFinish: () => {
+      importRetentionsForm.reset();
+      if (importRetentionsFileInput.value) importRetentionsFileInput.value.value = '';
+    },
+  });
+}
+
 const stateVariant = (state: string) => {
   const map: Record<string, 'success' | 'warning' | 'outline' | 'destructive'> = {
     AUTORIZADO: 'success',
@@ -100,7 +134,7 @@ const stateLabel = (state: string) => {
   return map[state.toUpperCase()] ?? state;
 };
 
-const typeLabel: Record<string, string> = { iva: 'IVA', renta: 'Renta' };
+const typeLabel: Record<string, string> = { IVA: 'IVA', RENTA: 'Renta', iva: 'IVA', renta: 'Renta' };
 
 function deleteOrder(order: Order) {
   if (confirm(`¿Eliminar la venta "${order.serie}"?`)) {
@@ -153,7 +187,16 @@ watch(() => props.orders.prev_page_url, clearSelection);
 
 const today = new Date().toISOString().slice(0, 10);
 const retentionPanelOpen = ref(false);
+const editingRetention = ref(false);
 const selectedOrder = ref<Order | null>(null);
+
+function toDateInput(d: string | null): string {
+  if (!d) return '';
+  const parts = d.split('-');
+  return parts.length === 3 && parts[2].length === 4
+    ? `${parts[2]}-${parts[1]}-${parts[0]}`
+    : d;
+}
 
 interface ItemSearch { query: string; open: boolean }
 const itemSearches = ref<ItemSearch[]>([]);
@@ -166,10 +209,33 @@ function emptySearch(): ItemSearch {
   return { query: '', open: false };
 }
 
+function populateRetentionForm(order: Order) {
+  retentionForm.serie_retention = order.serie_retention ?? '';
+  retentionForm.date_retention = toDateInput(order.date_retention);
+  retentionForm.autorization_retention = order.autorization_retention ?? '';
+  retentionForm.items = order.retention_items?.length
+    ? order.retention_items.map((i) => ({
+        retention_id: i.retention_id,
+        base: i.base,
+        porcentage: i.porcentage,
+        value: i.value,
+      }))
+    : [emptyItem(order.sub_total)];
+  itemSearches.value = order.retention_items?.length
+    ? order.retention_items.map((i) => ({
+        query: i.retention ? `${i.retention.code} – ${i.retention.description}` : '',
+        open: false,
+      }))
+    : [emptySearch()];
+}
+
 function openRetentionPanel(order: Order) {
   selectedOrder.value = order;
+  editingRetention.value = false;
 
-  if (!order.serie_retention) {
+  if (order.serie_retention) {
+    populateRetentionForm(order);
+  } else {
     retentionForm.reset();
     retentionForm.items = [emptyItem(order.sub_total)];
     itemSearches.value = [emptySearch()];
@@ -180,6 +246,7 @@ function openRetentionPanel(order: Order) {
 
 function closeRetentionPanel() {
   retentionPanelOpen.value = false;
+  editingRetention.value = false;
   selectedOrder.value = null;
 }
 
@@ -251,6 +318,24 @@ function submitRetention() {
           class="hidden"
           @change="handleFileSelected"
         />
+        <input
+          ref="importRetentionsFileInput"
+          type="file"
+          accept=".txt"
+          class="hidden"
+          @change="handleRetentionsFileSelected"
+        />
+        <button
+          type="button"
+          :disabled="importRetentionsForm.processing"
+          class="border-border text-foreground hover:bg-accent flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+          @click="triggerImportRetentions"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185Z" />
+          </svg>
+          {{ importRetentionsForm.processing ? 'Importando…' : 'Importar retenciones' }}
+        </button>
         <button
           type="button"
           :disabled="importForm.processing"
@@ -359,7 +444,7 @@ function submitRetention() {
           <tr
             v-for="order in orders.data"
             :key="order.id"
-            class="group transition-colors"
+            class="transition-colors"
             :class="selectedIds.has(order.id) ? 'bg-primary/5' : 'hover:bg-muted/40'"
           >
             <td class="w-10 px-4 py-3.5">
@@ -383,7 +468,7 @@ function submitRetention() {
               ${{ (Number(order.total) - (order.retention_items?.reduce((s, i) => s + Number(i.value), 0) ?? 0)).toFixed(2) }}
             </td>
             <td class="px-4 py-3.5 text-right whitespace-nowrap">
-              <div class="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div class="flex items-center justify-end gap-1">
                 <!-- Retention -->
                 <button
                   type="button"
@@ -436,7 +521,94 @@ function submitRetention() {
       </Transition>
 
       <Transition enter-active-class="transition-transform duration-200 ease-out" enter-from-class="translate-x-full" enter-to-class="translate-x-0" leave-active-class="transition-transform duration-150 ease-in" leave-from-class="translate-x-0" leave-to-class="translate-x-full">
-        <div v-if="retentionPanelOpen && selectedOrder" class="bg-background border-border fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l shadow-xl">
+        <div v-if="retentionPanelOpen && selectedOrder" class="bg-background border-border fixed inset-y-0 right-0 z-50 flex w-full max-w-4xl border-l shadow-xl">
+
+          <!-- ── Left: invoice info ── -->
+          <div class="border-border flex w-72 shrink-0 flex-col border-r">
+            <div class="border-border border-b px-5 py-4">
+              <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Factura</p>
+              <p class="text-foreground mt-0.5 font-mono text-sm font-medium">{{ selectedOrder.serie }}</p>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <p class="text-muted-foreground mb-0.5 text-xs font-medium">Cliente</p>
+                <p class="text-foreground text-sm">{{ selectedOrder.contact.name }}</p>
+              </div>
+              <div>
+                <p class="text-muted-foreground mb-0.5 text-xs font-medium">Fecha emisión</p>
+                <p class="text-foreground text-sm tabular-nums">{{ selectedOrder.emision }}</p>
+              </div>
+              <div>
+                <p class="text-muted-foreground mb-0.5 text-xs font-medium">Clave de acceso</p>
+                <p class="text-foreground break-all font-mono text-xs">{{ selectedOrder.autorization }}</p>
+              </div>
+
+              <!-- IVA breakdown -->
+              <div class="border-border rounded-lg border overflow-hidden">
+                <table class="min-w-full text-xs">
+                  <thead class="bg-muted">
+                    <tr>
+                      <th class="text-muted-foreground px-3 py-2 text-left font-medium">Concepto</th>
+                      <th class="text-muted-foreground px-3 py-2 text-right font-medium">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-border divide-y">
+                    <tr v-if="Number(selectedOrder.no_iva) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">No IVA</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.no_iva).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.base0) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 0%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.base0).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.base5) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 5%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.base5).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.base12) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 12%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.base12).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.base15) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 15%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.base15).toFixed(2) }}</td>
+                    </tr>
+                    <tr class="bg-muted/50">
+                      <td class="px-3 py-1.5 font-medium">Subtotal</td>
+                      <td class="px-3 py-1.5 text-right font-mono font-medium">${{ Number(selectedOrder.sub_total).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.iva5) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">IVA 5%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.iva5).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.iva12) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">IVA 12%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.iva12).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.iva15) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">IVA 15%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.iva15).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.discount) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Descuento</td>
+                      <td class="px-3 py-1.5 text-right font-mono text-destructive">-${{ Number(selectedOrder.discount).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedOrder.ice) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">ICE</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedOrder.ice).toFixed(2) }}</td>
+                    </tr>
+                    <tr class="bg-muted font-semibold">
+                      <td class="px-3 py-2">Total</td>
+                      <td class="px-3 py-2 text-right font-mono">${{ Number(selectedOrder.total).toFixed(2) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Right: retention panel ── -->
+          <div class="flex flex-1 flex-col">
 
           <!-- Header -->
           <div class="border-border flex items-start justify-between border-b px-6 py-4">
@@ -452,7 +624,7 @@ function submitRetention() {
           </div>
 
           <!-- ── Registered view ── -->
-          <div v-if="selectedOrder.serie_retention" class="flex-1 overflow-y-auto p-6">
+          <div v-if="selectedOrder.serie_retention && !editingRetention" class="flex-1 overflow-y-auto p-6">
             <div class="mb-6 grid grid-cols-2 gap-4">
               <div>
                 <p class="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">Serie</p>
@@ -504,6 +676,15 @@ function submitRetention() {
                   </tr>
                 </tfoot>
               </table>
+            </div>
+            <div class="mt-4 flex justify-end">
+              <button
+                type="button"
+                class="border-border text-foreground hover:bg-accent rounded-md border px-4 py-2 text-sm font-medium transition-colors"
+                @click="editingRetention = true"
+              >
+                Editar retención
+              </button>
             </div>
           </div>
 
@@ -655,6 +836,7 @@ function submitRetention() {
               </button>
             </div>
           </form>
+          </div><!-- end right column -->
         </div>
       </Transition>
     </Teleport>

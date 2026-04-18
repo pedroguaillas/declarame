@@ -8,6 +8,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 interface Order {
     id: number;
     contact_id: number;
+    contact: { id: number; identification: string; name: string } | null;
     voucher_type_id: number;
     emision: string;
     autorization: string;
@@ -41,12 +42,23 @@ const props = defineProps<{
     voucherTypes: VoucherType[];
 }>();
 
+function toInputDate(d: string): string {
+    const parts = d.split('-');
+    return parts.length === 3 && parts[2].length === 4
+        ? `${parts[2]}-${parts[1]}-${parts[0]}`
+        : d;
+}
+
+function toInputDatetime(d: string): string {
+    return d.slice(0, 16);
+}
+
 const form = useForm({
     contact_id: props.order.contact_id,
     voucher_type_id: props.order.voucher_type_id,
-    emision: props.order.emision,
+    emision: props.order.emision ? toInputDate(props.order.emision) : '',
     autorization: props.order.autorization,
-    autorized_at: props.order.autorized_at ?? '',
+    autorized_at: props.order.autorized_at ? toInputDatetime(props.order.autorized_at) : '',
     serie: props.order.serie,
     sub_total: props.order.sub_total,
     no_iva: props.order.no_iva,
@@ -88,6 +100,8 @@ function submit() {
             <ShopForm
                 :form="form"
                 :voucher-types="props.voucherTypes"
+                :initial-contact-identification="props.order.contact?.identification ?? ''"
+                :initial-contact-name="props.order.contact?.name ?? ''"
                 submit-label="Actualizar venta"
                 @submit="submit"
             />

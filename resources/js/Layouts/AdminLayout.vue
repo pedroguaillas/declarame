@@ -7,7 +7,7 @@ import { computed, onMounted, ref } from 'vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-const companies = computed(() => (page.props as any).companies ?? []);
+const companies = computed(() => (page.props as any).companiesScope ?? []);
 const currentCompany = computed(() => (page.props as any).currentCompany ?? null);
 const { isDark, toggle } = useColorMode();
 

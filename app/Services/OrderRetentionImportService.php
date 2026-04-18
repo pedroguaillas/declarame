@@ -1,0 +1,167 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Tenant\Order;
+use App\Models\Tenant\Retention;
+use Carbon\Carbon;
+use SimpleXMLElement;
+
+class OrderRetentionImportService
+{
+    public function __construct(
+        private readonly SriSoapService $sriSoapService,
+    ) {}
+
+    /**
+     * @return array{imported: int, skipped: int, errors: int}
+     */
+    public function import(string $content, string $companyRuc): array
+    {
+        if (! mb_check_encoding($content, 'UTF-8')) {
+            $content = mb_convert_encoding($content, 'UTF-8', 'ISO-8859-1');
+        }
+
+        $lines = preg_split('/\r?\n/', $content);
+        $imported = 0;
+        $skipped = 0;
+        $errors = 0;
+
+        foreach (array_slice($lines, 1) as $line) {
+            $line = trim($line);
+
+            if (empty($line)) {
+                continue;
+            }
+
+            $cols = explode("\t", $line);
+
+            if (count($cols) < 3) {
+                continue;
+            }
+
+            $claveAcceso = trim($cols[2]);
+
+            if (strlen($claveAcceso) !== 49) {
+                $skipped++;
+
+                continue;
+            }
+
+            $autorizacion = $this->sriSoapService->authorize($claveAcceso);
+
+            if ($autorizacion === null) {
+                $errors++;
+
+                continue;
+            }
+
+            $result = $this->processRetention($autorizacion, $companyRuc);
+            $imported += $result['imported'];
+            $skipped += $result['skipped'];
+        }
+
+        return ['imported' => $imported, 'skipped' => $skipped, 'errors' => $errors];
+    }
+
+    /**
+     * @return array{imported: int, skipped: int}
+     */
+    private function processRetention(object $autorizacion, string $companyRuc): array
+    {
+        $comprobanteXml = (string) $autorizacion->comprobante;
+        $xml = new SimpleXMLElement($comprobanteXml);
+
+        $identificacionSujeto = (string) $xml->infoCompRetencion->identificacionSujetoRetenido;
+
+        // Only process retentions issued to this company
+        if ($identificacionSujeto !== $companyRuc) {
+            return ['imported' => 0, 'skipped' => 1];
+        }
+
+        $estab = (string) $xml->infoTributaria->estab;
+        $ptoEmi = (string) $xml->infoTributaria->ptoEmi;
+        $secuencial = (string) $xml->infoTributaria->secuencial;
+        $serieRetention = "{$estab}-{$ptoEmi}-{$secuencial}";
+
+        $fechaEmision = (string) $xml->infoCompRetencion->fechaEmision;
+        $dateRetention = Carbon::createFromFormat('d/m/Y', $fechaEmision)->format('Y-m-d');
+
+        $autorizacionRetention = (string) $autorizacion->numeroAutorizacion;
+        if (empty($autorizacionRetention)) {
+            $autorizacionRetention = (string) $xml->infoTributaria->claveAcceso;
+        }
+
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($xml->docsSustento->docSustento as $docSustento) {
+            $numAutDocSustento = trim((string) $docSustento->numAutDocSustento);
+
+            $order = Order::where('autorization', $numAutDocSustento)->first();
+
+            if (! $order) {
+                $skipped++;
+
+                continue;
+            }
+
+            // Build retention items from XML
+            $items = [];
+            foreach ($docSustento->retenciones->retencion as $retencion) {
+                $codigo = (int) $retencion->codigo;      // 1=renta, 2=IVA
+                $codigoRetencion = trim((string) $retencion->codigoRetencion);
+                $base = (float) $retencion->baseImponible;
+                $porcentage = (float) $retencion->porcentajeRetener;
+                $value = (float) $retencion->valorRetenido;
+
+                $retention = $this->resolveRetention($codigo, $codigoRetencion, $porcentage);
+
+                if (! $retention) {
+                    continue;
+                }
+
+                $items[] = [
+                    'retention_id' => $retention->id,
+                    'base' => $base,
+                    'porcentage' => $porcentage,
+                    'value' => $value,
+                ];
+            }
+
+            if (empty($items)) {
+                $skipped++;
+
+                continue;
+            }
+
+            $order->update([
+                'serie_retention' => $serieRetention,
+                'date_retention' => $dateRetention,
+                'autorization_retention' => $autorizacionRetention,
+                'state_retention' => 'AUTORIZADO',
+            ]);
+
+            $order->retentionItems()->delete();
+            $order->retentionItems()->createMany($items);
+
+            $imported++;
+        }
+
+        return ['imported' => $imported, 'skipped' => $skipped];
+    }
+
+    private function resolveRetention(int $codigo, string $codigoRetencion, float $percentage): ?Retention
+    {
+        $type = $codigo === 2 ? 'IVA' : 'RENTA';
+
+        $retention = Retention::where('type', $type)->where('code', $codigoRetencion)->first();
+
+        if ($retention) {
+            return $retention;
+        }
+
+        // Fallback: match by type and percentage
+        return Retention::where('type', $type)->where('percentage', $percentage)->first();
+    }
+}

@@ -1,3 +1,94 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## About This App
+
+**Declárame** is an Ecuadorian tax declaration SaaS. Each customer (tenant) manages their own companies and imports/records their SRI (tax authority) documents: purchases (compras/shops), sales (ventas/orders), and retentions.
+
+## Commands
+
+```bash
+# Start full dev environment (PHP + Vite + queue + logs)
+composer run dev
+
+# Frontend only
+pnpm run dev
+pnpm run build
+
+# Tests
+php artisan test --compact
+php artisan test --compact --filter=OrderImportTest
+
+# PHP formatting (run after any PHP change)
+vendor/bin/pint --dirty --format agent
+
+# Wayfinder (run after adding/changing routes or controllers)
+php artisan wayfinder:generate
+
+# Seed a fresh tenant for local dev
+php artisan migrate:fresh --seed
+```
+
+## Architecture
+
+### Multi-tenancy (stancl/tenancy)
+
+The app uses **database-per-tenant** tenancy via `stancl/tenancy`. Each tenant gets their own MySQL database (`tenant{id}`).
+
+- **Central database** — `users`, `tenants`, `domains` tables. Accessed via default connection.
+- **Tenant database** — all business data. Accessed automatically once tenancy is initialized by domain.
+- Tenancy is initialized by subdomain (`acme.localhost`). All tenant routes live in `routes/tenant.php` with `InitializeTenancyByDomain` + `PreventAccessFromCentralDomains` middleware.
+- Tenant migrations are in `database/migrations/tenant/` (separate from central migrations in `database/migrations/`).
+
+### Dual Authentication
+
+There are two separate user tables:
+- `App\Models\User` — central users (login, SSO entry point)
+- `App\Models\Tenant\User` — per-tenant users (guard: `tenant`)
+
+Login flow: central user authenticates → SSO redirects to tenant subdomain → `SsoController` creates the tenant session via `AuthService`.
+
+### Company Scope (session-based)
+
+The currently selected company is stored in `session('current_company_id')`. All tenant data (shops, orders, accounts) is scoped to this value. The header selector in `AdminLayout.vue` posts to `CompanyScopeController@store` to change it.
+
+- Shared Inertia props in `HandleInertiaRequests`: `companiesScope` (array for the header selector), `currentCompany` (active company object).
+- **Important**: the key is `companiesScope`, not `companies` — this avoids collision with page-level `companies` props on the Companies CRUD pages.
+
+### Domain Model (tenant database)
+
+```
+Company          — RUC, name, tax settings (accounting, retention_agent, etc.)
+Contact          — suppliers/customers (identified by cédula/RUC)
+Shop             — purchase document (compra), belongs to Company + Contact
+Order            — sale document (venta), belongs to Company + Contact
+ShopRetentionItem  — retention lines applied to a Shop
+OrderRetentionItem — retention lines applied to an Order
+Retention        — catalog of SRI retention codes with percentage
+Account          — accounting account catalog
+VoucherType      — SRI voucher type codes (01=Factura, 04=NC, 05=ND, etc.)
+ContributorType  — GENERAL, RIMPE EMPRENDEDOR, RIMPE NEGOCIO POPULAR
+```
+
+### Import Services
+
+Documents are imported from `.dat` or `.xml` tab-delimited files exported from the SRI portal.
+
+- `ShopImportService` — imports purchases
+- `OrderImportService` — imports sales
+
+Both services skip duplicate records (by `autorization` key) and rows whose **clave de acceso** RUC segment doesn't match the active company. The clave de acceso (49-char string) encodes: `[0-7]` date, `[8-9]` voucher type, **`[10-22]` RUC (13 chars)**, `[23-25]` environment, `[26-30]` series, `[31-39]` sequential, `[40]` emission type, `[41-48]` numeric code + check digit.
+
+IVA tax base distribution (`distributeIva`) detects the applicable rate (5%, 8%, 12%, 15%) by comparing the ratio of IVA amount to subtotal, then assigns to the correct `base*` / `iva*` columns.
+
+### Frontend Structure
+
+- Pages: `resources/js/pages/{Module}/Index|Create|Edit.vue`
+- Layout: `resources/js/Layouts/AdminLayout.vue` — fixed header with company selector + sidebar nav
+- Route functions via Wayfinder: import from `@/actions/App/Http/Controllers/Tenant/{Controller}`
+- No hardcoded URLs anywhere in Vue — always use Wayfinder-generated `.url()` functions
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

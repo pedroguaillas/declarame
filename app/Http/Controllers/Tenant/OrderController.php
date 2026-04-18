@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreOrderRequest;
 use App\Http\Requests\Tenant\UpdateOrderRequest;
+use App\Models\Tenant\Company;
 use App\Models\Tenant\Order;
 use App\Models\Tenant\Retention;
+use App\Models\Tenant\VoucherType;
 use App\Services\OrderImportService;
+use App\Services\OrderRetentionImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,7 +24,9 @@ class OrderController extends Controller
             ->when(session('current_company_id'), fn ($q) => $q->where('company_id', session('current_company_id')))
             ->orderByDesc('emision')
             ->paginate(50, [
-                'id', 'company_id', 'contact_id', 'serie', 'emision', 'total', 'sub_total',
+                'id', 'company_id', 'contact_id', 'serie', 'emision', 'autorization',
+                'sub_total', 'no_iva', 'base0', 'base5', 'base12', 'base15',
+                'iva5', 'iva12', 'iva15', 'discount', 'ice', 'total',
                 'state', 'serie_retention', 'date_retention', 'state_retention', 'autorization_retention',
             ]);
 
@@ -55,7 +60,7 @@ class OrderController extends Controller
         $voucherTypes = VoucherType::whereIn('code', ['01', '02', '04'])->get();
 
         return Inertia::render('Orders/Edit', [
-            'order' => $order,
+            'order' => $order->load('contact'),
             'voucherTypes' => $voucherTypes,
         ]);
     }
@@ -82,12 +87,28 @@ class OrderController extends Controller
             'file' => ['required', 'file', 'max:5120'],
         ]);
 
+        $company = Company::findOrFail(session('current_company_id'));
         $content = file_get_contents($request->file('file')->getRealPath());
 
-        ['imported' => $imported, 'skipped' => $skipped] = $service->import($content, session('current_company_id'));
+        ['imported' => $imported, 'skipped' => $skipped] = $service->import($content, $company->id, $company->ruc);
 
         return redirect()->route('tenant.orders.index')
             ->with('success', "Importación completada: {$imported} ventas importadas, {$skipped} omitidas.");
+    }
+
+    public function importRetentions(Request $request, OrderRetentionImportService $service): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:5120'],
+        ]);
+
+        $company = Company::findOrFail(session('current_company_id'));
+        $content = file_get_contents($request->file('file')->getRealPath());
+
+        ['imported' => $imported, 'skipped' => $skipped, 'errors' => $errors] = $service->import($content, $company->ruc);
+
+        return redirect()->route('tenant.orders.index')
+            ->with('success', "Retenciones importadas: {$imported} procesadas, {$skipped} omitidas, {$errors} errores.");
     }
 
     public function storeRetention(Request $request, Order $order): RedirectResponse

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Tenant;
+use App\Models\Tenant\Company;
 use App\Models\Tenant\ContributorType;
 use App\Models\Tenant\User as TenantUser;
 use App\Models\Tenant\VoucherType;
@@ -47,6 +48,13 @@ class TenantSeeder extends Seeder
                 ['code' => '06', 'description' => 'Guía de Remisión'],
                 ['code' => '07', 'description' => 'Comprobante de Retención'],
             ]);
+            Company::create([
+                'ruc' => '1105167694001',
+                'name' => 'MI COMPANIA',
+                'matrix_address' => 'MI DIRECCION',
+                'contributor_type_id' => ContributorType::first()->id,
+            ]);
+            (new RetentionSeeder)->run();
         });
     }
 }

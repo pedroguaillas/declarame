@@ -64,6 +64,7 @@ Route::middleware([
             ->name('tenant.shops.account.update');
 
         Route::post('orders/import', [OrderController::class, 'import'])->name('tenant.orders.import');
+        Route::post('orders/import-retentions', [OrderController::class, 'importRetentions'])->name('tenant.orders.import-retentions');
 
         Route::resource('orders', OrderController::class)
             ->except(['show'])

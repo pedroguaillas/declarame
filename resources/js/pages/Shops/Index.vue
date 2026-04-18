@@ -41,8 +41,19 @@ interface Shop {
   acount_id: number | null;
   serie: string;
   emision: string;
-  total: string;
+  autorization: string;
   sub_total: string;
+  no_iva: string;
+  base0: string;
+  base5: string;
+  base12: string;
+  base15: string;
+  iva5: string;
+  iva12: string;
+  iva15: string;
+  discount: string;
+  ice: string;
+  total: string;
   state: string;
   company: { id: number; name: string };
   contact: { id: number; name: string };
@@ -435,7 +446,7 @@ function submitRetention() {
           <tr
             v-for="shop in shops.data"
             :key="shop.id"
-            class="group transition-colors"
+            class="transition-colors"
             :class="selectedIds.has(shop.id) ? 'bg-primary/5' : 'hover:bg-muted/40'"
           >
             <td class="w-10 px-4 py-3.5">
@@ -461,7 +472,7 @@ function submitRetention() {
               </td>
             </template>
             <td class="px-4 py-3.5 text-right whitespace-nowrap">
-              <div class="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div class="flex items-center justify-end gap-1">
                 <!-- Account -->
                 <button
                   type="button"
@@ -529,7 +540,90 @@ function submitRetention() {
       </Transition>
 
       <Transition enter-active-class="transition-transform duration-200 ease-out" enter-from-class="translate-x-full" enter-to-class="translate-x-0" leave-active-class="transition-transform duration-150 ease-in" leave-from-class="translate-x-0" leave-to-class="translate-x-full">
-        <div v-if="retentionPanelOpen && selectedShop" class="bg-background border-border fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l shadow-xl">
+        <div v-if="retentionPanelOpen && selectedShop" class="bg-background border-border fixed inset-y-0 right-0 z-50 flex w-full max-w-4xl border-l shadow-xl">
+
+          <!-- ── Left: invoice info ── -->
+          <div class="border-border flex w-72 shrink-0 flex-col border-r">
+            <div class="border-border border-b px-5 py-4">
+              <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">Factura</p>
+              <p class="text-foreground mt-0.5 font-mono text-sm font-medium">{{ selectedShop.serie }}</p>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <p class="text-muted-foreground mb-0.5 text-xs font-medium">Proveedor</p>
+                <p class="text-foreground text-sm">{{ selectedShop.contact.name }}</p>
+              </div>
+              <div>
+                <p class="text-muted-foreground mb-0.5 text-xs font-medium">Fecha emisión</p>
+                <p class="text-foreground text-sm tabular-nums">{{ selectedShop.emision }}</p>
+              </div>
+              <div>
+                <p class="text-muted-foreground mb-0.5 text-xs font-medium">Clave de acceso</p>
+                <p class="text-foreground break-all font-mono text-xs">{{ selectedShop.autorization }}</p>
+              </div>
+
+              <!-- IVA breakdown -->
+              <div class="border-border rounded-lg border overflow-hidden">
+                <table class="min-w-full text-xs">
+                  <thead class="bg-muted">
+                    <tr>
+                      <th class="text-muted-foreground px-3 py-2 text-left font-medium">Concepto</th>
+                      <th class="text-muted-foreground px-3 py-2 text-right font-medium">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-border divide-y">
+                    <tr v-if="Number(selectedShop.no_iva) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">No IVA</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.no_iva).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.base0) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 0%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.base0).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.base5) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 5%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.base5).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.iva5) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground pl-5">IVA 5%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.iva5).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.base12) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 12%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.base12).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.iva12) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground pl-5">IVA 12%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.iva12).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.base15) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Base 15%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.base15).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.iva15) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground pl-5">IVA 15%</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.iva15).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.discount) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">Descuento</td>
+                      <td class="px-3 py-1.5 text-right font-mono text-destructive">-${{ Number(selectedShop.discount).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="Number(selectedShop.ice) > 0" class="bg-card">
+                      <td class="px-3 py-1.5 text-muted-foreground">ICE</td>
+                      <td class="px-3 py-1.5 text-right font-mono">${{ Number(selectedShop.ice).toFixed(2) }}</td>
+                    </tr>
+                    <tr class="bg-muted font-semibold">
+                      <td class="px-3 py-2">Total</td>
+                      <td class="px-3 py-2 text-right font-mono">${{ Number(selectedShop.total).toFixed(2) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Right: retention panel ── -->
+          <div class="flex flex-1 flex-col">
 
           <!-- Header -->
           <div class="border-border flex items-start justify-between border-b px-6 py-4">
@@ -748,6 +842,7 @@ function submitRetention() {
               </button>
             </div>
           </form>
+          </div><!-- end right column -->
         </div>
       </Transition>
     </Teleport>

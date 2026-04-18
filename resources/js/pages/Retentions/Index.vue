@@ -112,7 +112,7 @@ function handleFileChange(event: Event) {
             <th class="text-muted-foreground px-5 py-3 text-left text-xs font-medium tracking-wider uppercase">Código</th>
             <th class="text-muted-foreground px-5 py-3 text-left text-xs font-medium tracking-wider uppercase">Tipo</th>
             <th class="text-muted-foreground px-5 py-3 text-left text-xs font-medium tracking-wider uppercase">Descripción</th>
-            <th class="text-muted-foreground px-5 py-3 text-right text-xs font-medium tracking-wider uppercase">% Retención</th>
+            <th class="text-muted-foreground px-5 py-3 text-right text-xs font-medium tracking-wider uppercase whitespace-nowrap">% Retención</th>
           </tr>
         </thead>
         <tbody class="divide-border bg-card divide-y">

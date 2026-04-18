@@ -23,8 +23,10 @@ interface FormErrors {
   [key: string]: string | undefined;
 }
 
-const props = defineProps<{
-  accounts: Account[];
+const props = withDefaults(defineProps<{
+  accounts?: Account[];
+  initialContactIdentification?: string;
+  initialContactName?: string;
   form: {
     acount_id: number | null;
     contact_id: number | null;
@@ -54,15 +56,19 @@ const props = defineProps<{
   };
   voucherTypes: VoucherType[];
   submitLabel: string;
-}>();
+}>(), {
+  accounts: () => [],
+  initialContactIdentification: '',
+  initialContactName: '',
+});
 
 const voucherTypeOptions: Option[] = props.voucherTypes.map((voucherType) => ({
   value: voucherType.id,
   label: `${voucherType.code} - ${voucherType.description}`,
 }));
 
-const contactIdentification = ref('');
-const contactName = ref('');
+const contactIdentification = ref(props.initialContactIdentification ?? '');
+const contactName = ref(props.initialContactName ?? '');
 const contactResolving = ref(false);
 const contactError = ref<string | null>(null);
 

@@ -9,6 +9,7 @@ use App\Models\Tenant\Account;
 use App\Models\Tenant\Company;
 use App\Models\Tenant\Retention;
 use App\Models\Tenant\Shop;
+use App\Models\Tenant\VoucherType;
 use App\Services\ShopImportService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,9 @@ class ShopController extends Controller
             ->when(session('current_company_id'), fn ($q) => $q->where('company_id', session('current_company_id')))
             ->orderByDesc('emision')
             ->paginate(50, [
-                'id', 'acount_id', 'company_id', 'contact_id', 'serie', 'emision', 'total', 'sub_total',
+                'id', 'acount_id', 'company_id', 'contact_id', 'serie', 'emision', 'autorization',
+                'sub_total', 'no_iva', 'base0', 'base5', 'base12', 'base15',
+                'iva5', 'iva12', 'iva15', 'discount', 'ice', 'total',
                 'state', 'serie_retention', 'date_retention', 'state_retention', 'autorization_retention',
             ]);
 
@@ -59,7 +62,7 @@ class ShopController extends Controller
     public function edit(Shop $shop): Response
     {
         return Inertia::render('Shops/Edit', [
-            'shop' => $shop,
+            'shop' => $shop->load('contact'),
             'voucherTypes' => VoucherType::whereIn('code', ['01', '02', '03', '04', '05'])->get(),
             'accounts' => $this->expenseAccounts(),
         ]);
@@ -96,9 +99,10 @@ class ShopController extends Controller
             'file' => ['required', 'file', 'max:5120'],
         ]);
 
+        $company = Company::findOrFail(session('current_company_id'));
         $content = file_get_contents($request->file('file')->getRealPath());
 
-        ['imported' => $imported, 'skipped' => $skipped] = $service->import($content, session('current_company_id'));
+        ['imported' => $imported, 'skipped' => $skipped] = $service->import($content, $company->id, $company->ruc);
 
         return redirect()->route('tenant.shops.index')
             ->with('success', "Importación completada: {$imported} compras importadas, {$skipped} omitidas.");
