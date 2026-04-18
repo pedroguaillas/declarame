@@ -40,7 +40,7 @@ class OrderRetentionImportService
                 continue;
             }
 
-            $claveAcceso = trim($cols[2]);
+            $claveAcceso = trim($cols[4]);
 
             if (strlen($claveAcceso) !== 49) {
                 $skipped++;
@@ -109,13 +109,11 @@ class OrderRetentionImportService
             // Build retention items from XML
             $items = [];
             foreach ($docSustento->retenciones->retencion as $retencion) {
-                $codigo = (int) $retencion->codigo;      // 1=renta, 2=IVA
                 $codigoRetencion = trim((string) $retencion->codigoRetencion);
                 $base = (float) $retencion->baseImponible;
-                $porcentage = (float) $retencion->porcentajeRetener;
+                $percentage = (float) $retencion->porcentajeRetener;
                 $value = (float) $retencion->valorRetenido;
-
-                $retention = $this->resolveRetention($codigo, $codigoRetencion, $porcentage);
+                $retention = Retention::where('code', $codigoRetencion)->first();
 
                 if (! $retention) {
                     continue;
@@ -124,7 +122,7 @@ class OrderRetentionImportService
                 $items[] = [
                     'retention_id' => $retention->id,
                     'base' => $base,
-                    'porcentage' => $porcentage,
+                    'percentage' => $percentage,
                     'value' => $value,
                 ];
             }
@@ -140,6 +138,7 @@ class OrderRetentionImportService
                 'date_retention' => $dateRetention,
                 'autorization_retention' => $autorizacionRetention,
                 'state_retention' => 'AUTORIZADO',
+                'retention_at' => Carbon::parse((string) $autorizacion->fechaAutorizacion)->format('Y-m-d H:i:s')
             ]);
 
             $order->retentionItems()->delete();
@@ -149,19 +148,5 @@ class OrderRetentionImportService
         }
 
         return ['imported' => $imported, 'skipped' => $skipped];
-    }
-
-    private function resolveRetention(int $codigo, string $codigoRetencion, float $percentage): ?Retention
-    {
-        $type = $codigo === 2 ? 'IVA' : 'RENTA';
-
-        $retention = Retention::where('type', $type)->where('code', $codigoRetencion)->first();
-
-        if ($retention) {
-            return $retention;
-        }
-
-        // Fallback: match by type and percentage
-        return Retention::where('type', $type)->where('percentage', $percentage)->first();
     }
 }

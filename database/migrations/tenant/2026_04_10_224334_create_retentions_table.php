@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('retentions', function (Blueprint $table) {
             $table->id();
-            $table->string('code');
-            $table->string('type'); // iva | renta
+            $table->string('code')->unique();
+            $table->string('type'); // IVA | RENTA
             $table->string('description');
             $table->decimal('percentage')->nullable();
             $table->timestamps();

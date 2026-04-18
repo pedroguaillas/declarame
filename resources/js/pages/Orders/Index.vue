@@ -614,7 +614,7 @@ function submitRetention() {
           <div class="border-border flex items-start justify-between border-b px-6 py-4">
             <div>
               <h2 class="text-foreground text-base font-semibold">Retención</h2>
-              <p class="text-muted-foreground mt-0.5 font-mono text-sm">{{ selectedOrder.serie }}</p>
+              <p class="text-muted-foreground mt-0.5 font-mono text-sm">{{ selectedOrder.serie_retention ?? '001-001-000000001' }}</p>
             </div>
             <button type="button" class="text-muted-foreground hover:text-foreground -mr-1 rounded-md p-1 transition-colors" @click="closeRetentionPanel">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
@@ -653,6 +653,7 @@ function submitRetention() {
                   <tr>
                     <th class="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium uppercase">Tipo</th>
                     <th class="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium uppercase">Código</th>
+                    <th class="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium uppercase">Descripción</th>
                     <th class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium uppercase">Base</th>
                     <th class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium uppercase">%</th>
                     <th class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium uppercase">Valor</th>
@@ -662,6 +663,7 @@ function submitRetention() {
                   <tr v-for="item in selectedOrder.retention_items" :key="item.id" class="bg-card">
                     <td class="px-4 py-2.5">{{ typeLabel[item.retention?.type ?? ''] ?? item.retention?.type }}</td>
                     <td class="px-4 py-2.5 font-mono">{{ item.retention?.code }}</td>
+                    <td class="text-muted-foreground px-4 py-2.5 text-sm">{{ item.retention?.description }}</td>
                     <td class="px-4 py-2.5 text-right font-mono">${{ Number(item.base).toFixed(2) }}</td>
                     <td class="px-4 py-2.5 text-right font-mono">{{ item.porcentage }}%</td>
                     <td class="px-4 py-2.5 text-right font-mono font-medium">${{ Number(item.value).toFixed(2) }}</td>
@@ -669,7 +671,7 @@ function submitRetention() {
                 </tbody>
                 <tfoot class="bg-muted">
                   <tr>
-                    <td colspan="4" class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium uppercase">Total retención</td>
+                    <td colspan="5" class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium uppercase">Total retención</td>
                     <td class="px-4 py-2.5 text-right font-mono font-semibold">
                       ${{ selectedOrder.retention_items.reduce((s, i) => s + Number(i.value), 0).toFixed(2) }}
                     </td>

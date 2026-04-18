@@ -11,7 +11,7 @@ class ShopRetentionItem extends Model
         'shop_id',
         'retention_id',
         'base',
-        'porcentage',
+        'percentage',
         'value',
     ];
 
@@ -19,7 +19,7 @@ class ShopRetentionItem extends Model
     {
         return [
             'base' => 'decimal:2',
-            'porcentage' => 'decimal:2',
+            'percentage' => 'decimal:2',
             'value' => 'decimal:2',
         ];
     }

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('shop_id')->constrained()->on('shops')->cascadeOnDelete();
             $table->foreignId('retention_id')->constrained()->on('retentions')->cascadeOnDelete();
             $table->decimal('base');
-            $table->decimal('porcentage');
+            $table->decimal('percentage');
             $table->decimal('value');
             $table->timestamps();
         });
